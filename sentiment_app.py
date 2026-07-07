@@ -5,7 +5,6 @@ import string
 import nltk
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
-from nltk.tokenize import word_tokenize
 
 # ----------------------------
 # Page Configuration
@@ -17,13 +16,12 @@ st.set_page_config(
 )
 
 # ----------------------------
-# Download NLTK Resources
+# Download Required NLTK Resource
 # ----------------------------
-nltk.download("punkt", quiet=True)
 nltk.download("stopwords", quiet=True)
 
 # ----------------------------
-# Load Model & Vectorizer
+# Load Model and TF-IDF Vectorizer
 # ----------------------------
 @st.cache_resource
 def load_resources():
@@ -42,11 +40,14 @@ except Exception as e:
     st.stop()
 
 # ----------------------------
-# Preprocessing
+# Initialize Preprocessing Tools
 # ----------------------------
 stop_words = set(stopwords.words("english"))
 stemmer = PorterStemmer()
 
+# ----------------------------
+# Text Preprocessing Function
+# ----------------------------
 def preprocess(text):
     text = text.lower()
     text = re.sub(r"<.*?>", "", text)
@@ -54,20 +55,25 @@ def preprocess(text):
     text = re.sub(r"\w*\d\w*", "", text)
     text = re.sub(r"\s+", " ", text).strip()
 
-    tokens = word_tokenize(text)
+    # Use split() instead of word_tokenize()
+    tokens = text.split()
+
+    # Remove stopwords
     tokens = [word for word in tokens if word not in stop_words]
+
+    # Apply stemming
     tokens = [stemmer.stem(word) for word in tokens]
 
     return " ".join(tokens)
 
 # ----------------------------
-# App UI
+# Streamlit UI
 # ----------------------------
 st.title("🎬 IMDB Movie Review Sentiment Analysis")
 
-st.write("""
-Enter a movie review below and the model will predict whether the sentiment is **Positive** or **Negative**.
-""")
+st.write(
+    "Enter a movie review below and the model will predict whether the sentiment is **Positive** or **Negative**."
+)
 
 review = st.text_area(
     "Movie Review",
@@ -77,10 +83,9 @@ review = st.text_area(
 
 if st.button("Analyze Sentiment"):
 
-    if not review.strip():
+    if review.strip() == "":
         st.warning("Please enter a movie review.")
     else:
-
         with st.spinner("Analyzing review..."):
 
             processed_review = preprocess(review)
@@ -96,29 +101,19 @@ if st.button("Analyze Sentiment"):
         st.markdown("---")
 
         if prediction == 1:
-            st.success("😊 **Positive Review**")
+            st.success("😊 Positive Review")
+            if confidence is not None:
+                st.metric("Confidence", f"{confidence[1] * 100:.2f}%")
         else:
-            st.error("😞 **Negative Review**")
+            st.error("😞 Negative Review")
+            if confidence is not None:
+                st.metric("Confidence", f"{confidence[0] * 100:.2f}%")
 
-        if confidence is not None:
-            if prediction == 1:
-                st.metric(
-                    "Confidence",
-                    f"{confidence[1]*100:.2f}%"
-                )
-            else:
-                st.metric(
-                    "Confidence",
-                    f"{confidence[0]*100:.2f}%"
-                )
-
-        with st.expander("Processed Text"):
+        with st.expander("Processed Review"):
             st.write(processed_review)
 
         with st.expander("Original Review"):
             st.write(review)
 
 st.markdown("---")
-st.caption(
-    "Built with Streamlit • Logistic Regression • TF-IDF Vectorizer"
-)
+st.caption("Built with Streamlit • Logistic Regression • TF-IDF")
